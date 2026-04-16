@@ -7,9 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -153,6 +150,12 @@ body::before {
 /* GUEST WAITING */
 .guest-waiting { background:var(--card); border:0.5px solid var(--border); border-radius:14px; padding:3rem 2rem; text-align:center; }
 
+/* SCRIPT URL SETUP */
+.script-setup { background: rgba(184,154,106,0.1); border: 1px solid var(--gold); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.script-setup p { font-size: 0.82rem; color: var(--deep); line-height: 1.8; margin-bottom: 0.75rem; }
+.script-setup input { width: 100%; padding: 0.6rem 0.9rem; border: 0.5px solid var(--border); border-radius: 7px; font-family: 'Jost', sans-serif; font-size: 0.8rem; background: var(--cream); color: var(--deep); outline: none; margin-bottom: 0.75rem; }
+.script-setup input:focus { border-color: var(--gold); }
+
 @media (max-width:480px) {
   .tabs { flex-wrap:wrap; }
   .tab { flex:1 1 auto; min-width:calc(50% - 1px); font-size:0.72rem; padding:0.6rem 0.5rem; }
@@ -178,6 +181,14 @@ body::before {
     <div class="divider"><span>❧</span></div>
   </div>
 
+  <!-- SCRIPT URL PROMPT (shown when not yet configured) -->
+  <div id="script-url-prompt" class="script-setup" style="display:none;">
+    <div class="card-title" style="margin-bottom:0.5rem;">Connect to Google Drive</div>
+    <p>Paste your Google Apps Script Web App URL below to enable photo uploads.</p>
+    <input type="url" id="script-url-input" placeholder="https://script.google.com/macros/s/…/exec" />
+    <button class="btn btn-primary" onclick="saveScriptUrl()">Connect ✦</button>
+  </div>
+
   <!-- SETUP (admin only, shown before album is configured) -->
   <div id="setup-section" style="display:none;" class="card">
     <div class="card-title">Set up your album</div>
@@ -193,7 +204,7 @@ body::before {
     <button class="btn btn-primary" onclick="saveSetup()">Create Album ✦</button>
   </div>
 
-  <!-- GUEST WAITING (shown to guests before album is set up) -->
+  <!-- GUEST WAITING -->
   <div id="guest-waiting" style="display:none;" class="guest-waiting">
     <div style="font-size:2.5rem;margin-bottom:1rem;">💐</div>
     <div class="card-title" style="margin-bottom:0.5rem;">Album Coming Soon</div>
@@ -342,6 +353,13 @@ body::before {
             <button class="btn btn-primary" onclick="updateCouple()">Save Changes</button>
           </div>
         </div>
+        <div class="card">
+          <div class="card-title">Change Script URL</div>
+          <div style="display:grid;gap:0.75rem;margin-top:0.5rem;">
+            <input id="edit-script-url" class="pin-input" style="width:100%;text-align:left;letter-spacing:0;" placeholder="Apps Script URL" />
+            <button class="btn btn-primary" onclick="updateScriptUrl()">Save URL</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -359,33 +377,20 @@ body::before {
 
 <script>
 // ─────────────────────────────────────────
-// FIREBASE CONFIG
+// CONFIG
 // ─────────────────────────────────────────
-const firebaseConfig = {
-  apiKey:            "AIzaSyBNEj5hItYQxPgbVVeDMtm_5ek-Y0vfuo4",
-  authDomain:        "album-sharing-9a90b.firebaseapp.com",
-  databaseURL:       "https://album-sharing-9a90b-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "album-sharing-9a90b",
-  storageBucket:     "album-sharing-9a90b.firebasestorage.app",
-  messagingSenderId: "562708206295",
-  appId:             "1:562708206295:web:1a20bdf771552dda0ed692",
-  measurementId:     "G-31LGHF8E2N"
-};
+// Your Google Apps Script Web App URL — set via the prompt or admin panel
+let SCRIPT_URL = localStorage.getItem('gas_script_url') || '';
 
-firebase.initializeApp(firebaseConfig);
-const db      = firebase.database();
-const storage = firebase.storage();
+// ?admin in URL = admin mode
+const IS_ADMIN = /[?&#]admin\b/.test(window.location.search + window.location.hash);
 
 // ─────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────
-let mediaStore    = [];
-let settings      = { bride:'', groom:'', date:'', pin:'1234' };
-let pendingFiles  = [];
-let adminUnlocked = false;
-
-// ?admin in URL = admin mode; plain URL = guest mode
-const IS_ADMIN = /[?&#]admin\b/.test(window.location.search + window.location.hash);
+let mediaStore   = [];
+let settings     = { bride:'', groom:'', date:'', pin:'1234' };
+let pendingFiles = [];
 
 // ─────────────────────────────────────────
 // INIT
@@ -403,21 +408,53 @@ function init() {
   dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
   document.getElementById('file-input').addEventListener('change', e => handleFiles(e.target.files));
 
-  listenSettings();
-  listenMedia();
+  if (!SCRIPT_URL) {
+    // No script URL yet — show prompt for admin, waiting screen for guests
+    if (IS_ADMIN) {
+      document.getElementById('script-url-prompt').style.display = 'block';
+    } else {
+      document.getElementById('guest-waiting').style.display = 'block';
+    }
+    return;
+  }
+
+  loadAlbum();
+}
+
+function saveScriptUrl() {
+  const url = document.getElementById('script-url-input').value.trim();
+  if (!url.startsWith('https://script.google.com/macros/s/AKfycbwll8BTpslO4RWSGmfs9YRgZZn273rqZVWQSYPheDsbreq33AjBcvYSrbEaBqYEjf_o/exec')) {
+    toast('Please enter a valid Apps Script URL'); return;
+  }
+  localStorage.setItem('gas_script_url', url);
+  SCRIPT_URL = url;
+  document.getElementById('script-url-prompt').style.display = 'none';
+  loadAlbum();
+}
+
+function updateScriptUrl() {
+  const url = document.getElementById('edit-script-url').value.trim();
+  if (!url) return;
+  localStorage.setItem('gas_script_url', url);
+  SCRIPT_URL = url;
+  toast('Script URL updated ✦');
 }
 
 // ─────────────────────────────────────────
-// SETTINGS — live listener
+// LOAD ALBUM (settings + gallery)
 // ─────────────────────────────────────────
-function listenSettings() {
-  db.ref('settings').on('value', snap => {
-    const data = snap.val();
-    if (data && data.bride && data.groom) {
-      settings = data;
+async function loadAlbum() {
+  try {
+    setStatus(null); // connecting
+    const res  = await gas('getGallery');
+    if (!res.ok) throw new Error(res.error || 'Load failed');
+
+    mediaStore = res.media || [];
+
+    if (res.settings && res.settings.bride && res.settings.groom) {
+      settings = res.settings;
       showMainUI();
     } else {
-      // Not configured yet
       document.getElementById('main-ui').style.display       = 'none';
       document.getElementById('guest-waiting').style.display = 'none';
       document.getElementById('setup-section').style.display = 'none';
@@ -427,22 +464,57 @@ function listenSettings() {
         document.getElementById('guest-waiting').style.display = 'block';
       }
     }
-  }, err => {
-    setFbStatus(false);
-    toast('Firebase error — check your rules');
-    console.error(err);
-  });
+
+    updateStats();
+    renderGallery();
+    setStatus(true);
+
+    // Poll for new photos every 15s (since no realtime DB anymore)
+    setInterval(pollGallery, 15000);
+  } catch(e) {
+    setStatus(false);
+    toast('Connection error: ' + e.message);
+  }
 }
 
+async function pollGallery() {
+  try {
+    const res = await gas('getGallery');
+    if (!res.ok) return;
+    mediaStore = res.media || [];
+    updateStats();
+    renderGallery();
+  } catch(e) { /* silent */ }
+}
+
+// ─────────────────────────────────────────
+// GAS API HELPER
+// ─────────────────────────────────────────
+async function gas(action, extra = {}) {
+  const body = JSON.stringify({ action, ...extra });
+  const res  = await fetch(SCRIPT_URL, {
+    method:  'POST',
+    body,
+    // Apps Script requires no-cors OR a redirect — we use redirect:follow
+    redirect: 'follow'
+  });
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch(e) { throw new Error('Bad response from script: ' + text.slice(0,120)); }
+}
+
+// ─────────────────────────────────────────
+// SETTINGS
+// ─────────────────────────────────────────
 function saveSetup() {
   const b = document.getElementById('bride-name').value.trim();
   const g = document.getElementById('groom-name').value.trim();
   const d = document.getElementById('wedding-date').value;
   const p = document.getElementById('album-pin').value.trim();
   if (!b || !g) { toast('Please enter both names'); return; }
-  db.ref('settings').set({ bride:b, groom:g, date:d, pin: p || '1234' })
-    .then(() => toast('Album created! ✦'))
-    .catch(e => toast('Save error: ' + e.message));
+  gas('saveSettings', { bride:b, groom:g, date:d, pin: p||'1234' })
+    .then(r => { if (r.ok) { toast('Album created! ✦'); loadAlbum(); } else toast(r.error); })
+    .catch(e => toast('Error: ' + e.message));
 }
 
 function showMainUI() {
@@ -456,33 +528,20 @@ function showMainUI() {
       d.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
   }
   if (IS_ADMIN) {
-    document.getElementById('edit-bride').value = settings.bride;
-    document.getElementById('edit-groom').value = settings.groom;
+    document.getElementById('edit-bride').value      = settings.bride;
+    document.getElementById('edit-groom').value      = settings.groom;
+    document.getElementById('edit-script-url').value = SCRIPT_URL;
     generateQR();
   }
-  setFbStatus(true);
 }
 
 function updateCouple() {
   const b = document.getElementById('edit-bride').value.trim();
   const g = document.getElementById('edit-groom').value.trim();
   if (!b || !g) { toast('Names cannot be empty'); return; }
-  db.ref('settings').update({ bride:b, groom:g })
-    .then(() => toast('Updated! ✦'))
+  gas('saveSettings', { bride:b, groom:g, date:settings.date, pin:settings.pin })
+    .then(r => r.ok ? toast('Updated! ✦') : toast(r.error))
     .catch(e => toast('Error: ' + e.message));
-}
-
-// ─────────────────────────────────────────
-// MEDIA — real-time listener
-// ─────────────────────────────────────────
-function listenMedia() {
-  db.ref('memories').on('value', snap => {
-    mediaStore = [];
-    snap.forEach(child => mediaStore.push({ id: child.key, ...child.val() }));
-    mediaStore.sort((a,b) => new Date(b.ts) - new Date(a.ts));
-    updateStats();
-    renderGallery();
-  });
 }
 
 // ─────────────────────────────────────────
@@ -524,51 +583,36 @@ function clearPreview() {
   updateUploadBtn();
 }
 
-
-// Helper to shrink images before uploading so they don't crash the browser
+// ─────────────────────────────────────────
+// IMAGE COMPRESSION
+// ─────────────────────────────────────────
 function compressImage(file, maxWidth = 1920, quality = 0.8) {
-  return new Promise((resolve) => {
-    // If it's a video, just return the original file immediately
-    if (!file.type.startsWith('image/')) {
-      resolve(file); 
-      return;
-    }
-
+  return new Promise(resolve => {
+    if (!file.type.startsWith('image/')) { resolve(file); return; }
     const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
+    reader.onerror = () => resolve(file);
+    reader.onload = event => {
       const img = new Image();
-      img.src = event.target.result;
+      img.onerror = () => resolve(file);
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        // Resize if the image is wider than maxWidth
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert back to a smaller file
-        canvas.toBlob((blob) => {
-          const compressedFile = new File([blob], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now()
-          });
-          resolve(compressedFile);
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name, { type:'image/jpeg', lastModified: Date.now() }));
         }, 'image/jpeg', quality);
       };
+      img.src = event.target.result;
     };
+    reader.readAsDataURL(file);
   });
 }
+
 // ─────────────────────────────────────────
-// UPLOAD → Storage + Realtime DB
+// UPLOAD → Apps Script → Google Drive
 // ─────────────────────────────────────────
 async function uploadFiles() {
   if (!pendingFiles.length) return;
@@ -584,32 +628,27 @@ async function uploadFiles() {
   let done = 0;
 
   try {
-    // Notice we changed "file" to "originalFile" here
     for (const originalFile of pendingFiles) {
-      
-      // THIS IS THE MAGIC LINE YOU WERE MISSING:
-      // Shrink the file before doing anything else
       const file = await compressImage(originalFile);
 
-      const uid  = Date.now() + '_' + Math.random().toString(36).slice(2,7);
-      const path = `wedding-memories/${uid}_${file.name}`;
-      const ref  = storage.ref(path);
+      // Convert file to base64 for Apps Script transport
+      const base64 = await fileToBase64(file);
 
-      await ref.put(file);
-      const url = await ref.getDownloadURL();
-
-      await db.ref('memories').push({
-        name:  file.name,
-        type:  file.type,
-        size:  file.size,
-        url,
-        path,
-        guest: guestName,
-        ts:    new Date().toISOString()
+      const res = await gas('upload', {
+        filename: file.name,
+        mimeType: file.type,
+        data:     base64,
+        guest:    guestName
       });
 
+      if (!res.ok) throw new Error(res.error || 'Upload failed');
+
+      // Immediately add to local store so gallery updates without waiting for poll
+      mediaStore.unshift(res.entry);
       done++;
       bar.style.width = Math.round((done / total) * 100) + '%';
+      updateStats();
+      renderGallery();
     }
 
     setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 600);
@@ -622,6 +661,15 @@ async function uploadFiles() {
   }
 
   btn.disabled = false; btn.textContent = 'Upload to Album ✦';
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 // ─────────────────────────────────────────
@@ -645,7 +693,7 @@ function renderGallery() {
     item.className = 'gallery-item';
     item.onclick = () => openLb(i);
 
-    if (m.type.startsWith('image/')) {
+    if (m.type && m.type.startsWith('image/')) {
       const img = document.createElement('img'); img.src = m.url; img.loading = 'lazy';
       item.appendChild(img);
     } else {
@@ -657,79 +705,54 @@ function renderGallery() {
 
     const meta = document.createElement('div');
     meta.className = 'gallery-meta';
-    meta.innerHTML = '<span>' + escHtml(m.guest) + '</span>';
+    meta.innerHTML = '<span>' + escHtml(m.guest || '') + '</span>';
     item.appendChild(meta);
     grid.appendChild(item);
   });
 }
 
 // ─────────────────────────────────────────
-// LIGHTBOX
-// ─────────────────────────────────────────
-function openLb(i) {
-  const m  = mediaStore[i];
-  const lb = document.getElementById('lightbox');
-  const c  = document.getElementById('lb-content');
-  c.innerHTML = '';
-  if (m.type.startsWith('image/')) {
-    const img = document.createElement('img'); img.src = m.url; c.appendChild(img);
-  } else {
-    const vid = document.createElement('video');
-    vid.src = m.url; vid.controls = true; vid.autoplay = true; c.appendChild(vid);
-  }
-  document.getElementById('lb-info').textContent =
-    m.guest + ' · ' + new Date(m.ts).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
-  lb.classList.add('open');
-}
-
-function closeLb(e) {
-  if (!e || e.target === document.getElementById('lightbox') || e.target.className === 'lb-close') {
-    const vid = document.querySelector('#lb-content video');
-    if (vid) vid.pause();
-    document.getElementById('lb-content').innerHTML = '';
-    document.getElementById('lightbox').classList.remove('open');
-  }
-}
-
-// ─────────────────────────────────────────
-// DOWNLOAD ALL (admin)
+// DOWNLOAD ALL
 // ─────────────────────────────────────────
 async function downloadAll() {
   if (!mediaStore.length) { toast('No files to download yet'); return; }
   toast('Preparing ZIP… this may take a moment');
   const zip    = new JSZip();
-  const folder = zip.folder(settings.bride + '_' + settings.groom + '_Memories');
+  const folder = zip.folder((settings.bride||'Wedding') + '_' + (settings.groom||'Memories'));
   try {
     for (let i = 0; i < mediaStore.length; i++) {
       const m   = mediaStore[i];
-      const ext = m.name.split('.').pop() || (m.type.includes('video') ? 'mp4' : 'jpg');
+      const ext = m.name ? m.name.split('.').pop() : (m.type && m.type.includes('video') ? 'mp4' : 'jpg');
       const res = await fetch(m.url);
       const buf = await res.arrayBuffer();
-      folder.file((i+1) + '_' + m.guest.replace(/\s+/g,'_') + '.' + ext, buf);
+      folder.file((i+1) + '_' + (m.guest||'guest').replace(/\s+/g,'_') + '.' + ext, buf);
     }
     const blob = await zip.generateAsync({ type:'blob' });
     const a    = document.createElement('a');
     a.href     = URL.createObjectURL(blob);
-    a.download = settings.bride + '_' + settings.groom + '_Wedding_Memories.zip';
+    a.download = (settings.bride||'Wedding') + '_' + (settings.groom||'Memories') + '_Wedding_Memories.zip';
     a.click();
     toast('✦ Download started!');
   } catch(e) {
     toast('Download error: ' + e.message);
-    console.error(e);
   }
 }
 
 // ─────────────────────────────────────────
-// CLEAR ALBUM (admin)
+// CLEAR ALBUM
 // ─────────────────────────────────────────
 async function clearAlbum() {
   if (!confirm('Delete ALL memories? This cannot be undone.')) return;
   try {
-    for (const m of mediaStore) {
-      if (m.path) await storage.ref(m.path).delete().catch(() => {});
+    const res = await gas('deleteAll');
+    if (res.ok) {
+      mediaStore = [];
+      updateStats();
+      renderGallery();
+      toast('Album cleared');
+    } else {
+      toast('Error: ' + res.error);
     }
-    await db.ref('memories').remove();
-    toast('Album cleared');
   } catch(e) {
     toast('Error: ' + e.message);
   }
@@ -739,8 +762,8 @@ async function clearAlbum() {
 // STATS
 // ─────────────────────────────────────────
 function updateStats() {
-  document.getElementById('st-photos').textContent = mediaStore.filter(m => m.type.startsWith('image/')).length;
-  document.getElementById('st-videos').textContent = mediaStore.filter(m => m.type.startsWith('video/')).length;
+  document.getElementById('st-photos').textContent = mediaStore.filter(m => m.type && m.type.startsWith('image/')).length;
+  document.getElementById('st-videos').textContent = mediaStore.filter(m => m.type && m.type.startsWith('video/')).length;
   document.getElementById('st-guests').textContent = [...new Set(mediaStore.map(m => m.guest))].length;
 }
 
@@ -770,7 +793,7 @@ function unlockAdmin() {
 }
 
 // ─────────────────────────────────────────
-// QR CODE — always the plain guest URL
+// QR CODE
 // ─────────────────────────────────────────
 function generateQR() {
   const container = document.getElementById('qr-canvas');
@@ -804,20 +827,47 @@ function copyUrl() {
 }
 
 // ─────────────────────────────────────────
+// LIGHTBOX
+// ─────────────────────────────────────────
+function openLb(i) {
+  const m  = mediaStore[i];
+  const lb = document.getElementById('lightbox');
+  const c  = document.getElementById('lb-content');
+  c.innerHTML = '';
+  if (m.type && m.type.startsWith('image/')) {
+    const img = document.createElement('img'); img.src = m.url; c.appendChild(img);
+  } else {
+    const vid = document.createElement('video');
+    vid.src = m.url; vid.controls = true; vid.autoplay = true; c.appendChild(vid);
+  }
+  document.getElementById('lb-info').textContent =
+    (m.guest||'') + ' · ' + new Date(m.ts).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  lb.classList.add('open');
+}
+
+function closeLb(e) {
+  if (!e || e.target === document.getElementById('lightbox') || e.target.className === 'lb-close') {
+    const vid = document.querySelector('#lb-content video');
+    if (vid) vid.pause();
+    document.getElementById('lb-content').innerHTML = '';
+    document.getElementById('lightbox').classList.remove('open');
+  }
+}
+
+// ─────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────
-function setFbStatus(ok) {
+function setStatus(ok) {
   const dot  = document.getElementById('fb-dot');
   const text = document.getElementById('fb-status-text');
   if (!dot) return;
+  if (ok === null) { dot.className = 'fb-dot'; text.textContent = 'Connecting…'; return; }
   dot.className    = 'fb-dot' + (ok ? ' live' : ' error');
-  text.textContent = ok ? 'Live' : 'Connection error';
+  text.textContent = ok ? 'Connected to Drive' : 'Connection error';
 }
 
 function escHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function toast(msg) {

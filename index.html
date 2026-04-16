@@ -7,510 +7,161 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ivory: #f9f5ef; --blush: #e8c8b8; --rose: #c47e6a;
+  --deep: #3a2a24; --gold: #b89a6a; --sage: #8a9e84;
+  --cream: #faf7f2; --muted: #8a7a72;
+  --border: rgba(180,150,120,0.25); --card: rgba(255,252,248,0.95);
+}
+body { font-family: 'Jost', sans-serif; background: var(--ivory); color: var(--deep); min-height: 100vh; overflow-x: hidden; }
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(232,200,184,0.18) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(138,158,132,0.12) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(184,154,106,0.06) 0%, transparent 60%);
+}
+.wrap { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; padding: 0 1.5rem 4rem; }
 
-  :root {
-    --ivory: #f9f5ef;
-    --blush: #e8c8b8;
-    --rose: #c47e6a;
-    --deep: #3a2a24;
-    --gold: #b89a6a;
-    --sage: #8a9e84;
-    --cream: #faf7f2;
-    --muted: #8a7a72;
-    --border: rgba(180,150,120,0.25);
-    --card: rgba(255,252,248,0.95);
-  }
+/* HERO */
+.hero { text-align: center; padding: 3.5rem 1rem 2rem; }
+.hero-ornament { font-size: 1.4rem; color: var(--gold); letter-spacing: 0.5rem; display: block; margin-bottom: 0.6rem; opacity: 0.7; }
+.hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.2rem,5vw,3.2rem); font-weight: 300; color: var(--deep); line-height: 1.15; }
+.hero h1 em { font-style: italic; color: var(--rose); }
+.hero-sub { font-size: 0.82rem; color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 0.6rem; }
+.admin-badge { display:inline-block; background:var(--deep); color:var(--ivory); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; padding:0.3rem 0.9rem; border-radius:20px; margin-top:0.75rem; }
+.divider { display:flex; align-items:center; gap:1rem; margin:1.6rem 0; opacity:0.45; }
+.divider::before,.divider::after { content:''; flex:1; height:0.5px; background:var(--gold); }
+.divider span { color:var(--gold); font-size:0.9rem; }
 
-  body {
-    font-family: 'Jost', sans-serif;
-    background: var(--ivory);
-    color: var(--deep);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+/* CARD */
+.card { background:var(--card); border:0.5px solid var(--border); border-radius:14px; padding:1.8rem; margin-bottom:1.2rem; }
+.card-title { font-family:'Cormorant Garamond',serif; font-size:1.25rem; font-weight:400; color:var(--deep); margin-bottom:0.25rem; }
+.card-sub { font-size:0.78rem; color:var(--muted); letter-spacing:0.08em; margin-bottom:1.2rem; }
 
-  /* BACKGROUND TEXTURE */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      radial-gradient(circle at 15% 20%, rgba(232,200,184,0.18) 0%, transparent 45%),
-      radial-gradient(circle at 85% 80%, rgba(138,158,132,0.12) 0%, transparent 45%),
-      radial-gradient(circle at 50% 50%, rgba(184,154,106,0.06) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
+/* TABS */
+.tabs { display:flex; border:0.5px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:2rem; background:rgba(255,250,245,0.5); }
+.tab { flex:1; padding:0.7rem 1rem; font-family:'Jost',sans-serif; font-size:0.8rem; font-weight:400; letter-spacing:0.12em; text-transform:uppercase; background:transparent; border:none; color:var(--muted); cursor:pointer; transition:all 0.2s; }
+.tab.active { background:var(--deep); color:var(--ivory); }
+.tab:not(.active):hover { background:var(--blush); color:var(--deep); }
 
-  .wrap { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+/* PANELS */
+.panel { display:none; animation:fadeUp 0.35s ease; }
+.panel.active { display:block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
-  /* ── HERO ── */
-  .hero {
-    text-align: center;
-    padding: 3.5rem 1rem 2.5rem;
-    position: relative;
-  }
-  .hero-ornament {
-    font-size: 1.4rem;
-    color: var(--gold);
-    letter-spacing: 0.5rem;
-    display: block;
-    margin-bottom: 0.6rem;
-    opacity: 0.7;
-  }
-  .hero h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(2.2rem, 5vw, 3.2rem);
-    font-weight: 300;
-    color: var(--deep);
-    line-height: 1.15;
-    letter-spacing: 0.02em;
-  }
-  .hero h1 em {
-    font-style: italic;
-    color: var(--rose);
-  }
-  .hero-sub {
-    font-size: 0.82rem;
-    color: var(--muted);
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    margin-top: 0.6rem;
-  }
-  .divider {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin: 1.6rem 0;
-    opacity: 0.45;
-  }
-  .divider::before, .divider::after {
-    content: '';
-    flex: 1;
-    height: 0.5px;
-    background: var(--gold);
-  }
-  .divider span { color: var(--gold); font-size: 0.9rem; }
+/* UPLOAD ZONE */
+.upload-zone { border:1.5px dashed var(--blush); border-radius:12px; padding:2.5rem 1.5rem; text-align:center; cursor:pointer; transition:all 0.2s; background:rgba(232,200,184,0.06); }
+.upload-zone:hover,.upload-zone.drag-over { border-color:var(--rose); background:rgba(196,126,106,0.06); }
+.upload-icon { width:48px; height:48px; margin:0 auto 1rem; opacity:0.45; }
+.upload-zone p { font-size:0.88rem; color:var(--muted); line-height:1.7; }
+.upload-zone strong { color:var(--rose); font-weight:500; }
+#file-input { display:none; }
 
-  /* ── TABS ── */
-  .tabs {
-    display: flex;
-    gap: 0;
-    border: 0.5px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 2rem;
-    background: rgba(255,250,245,0.5);
-  }
-  .tab {
-    flex: 1;
-    padding: 0.7rem 1rem;
-    font-family: 'Jost', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 400;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .tab.active {
-    background: var(--deep);
-    color: var(--ivory);
-  }
-  .tab:not(.active):hover { background: var(--blush); color: var(--deep); }
+/* NAME FIELD */
+.name-field { display:flex; gap:0.75rem; margin-bottom:1rem; }
+.name-field input { flex:1; padding:0.65rem 1rem; border:0.5px solid var(--border); border-radius:8px; font-family:'Jost',sans-serif; font-size:0.88rem; background:var(--cream); color:var(--deep); outline:none; transition:border-color 0.2s; }
+.name-field input:focus { border-color:var(--gold); }
+.name-field input::placeholder { color:var(--muted); }
 
-  /* ── PANELS ── */
-  .panel { display: none; animation: fadeUp 0.35s ease; }
-  .panel.active { display: block; }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+/* PREVIEW GRID */
+.preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px; margin-top:1rem; }
+.preview-item { aspect-ratio:1; border-radius:8px; overflow:hidden; position:relative; background:var(--blush); border:0.5px solid var(--border); }
+.preview-item img,.preview-item video { width:100%; height:100%; object-fit:cover; }
+.preview-item .rm { position:absolute; top:4px; right:4px; width:18px; height:18px; background:rgba(58,42,36,0.75); border:none; border-radius:50%; color:white; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.vid-badge { position:absolute; bottom:4px; left:4px; background:rgba(58,42,36,0.7); color:#fff; font-size:9px; letter-spacing:0.05em; padding:2px 5px; border-radius:4px; }
 
-  /* ── CARD ── */
-  .card {
-    background: var(--card);
-    border: 0.5px solid var(--border);
-    border-radius: 14px;
-    padding: 1.8rem;
-    margin-bottom: 1.2rem;
-  }
-  .card-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.25rem;
-    font-weight: 400;
-    color: var(--deep);
-    margin-bottom: 0.25rem;
-  }
-  .card-sub {
-    font-size: 0.78rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    margin-bottom: 1.2rem;
-  }
+/* BUTTON */
+.btn { display:inline-flex; align-items:center; gap:0.5rem; padding:0.7rem 1.6rem; border-radius:8px; font-family:'Jost',sans-serif; font-size:0.82rem; font-weight:400; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:all 0.2s; border:0.5px solid; }
+.btn-primary { background:var(--deep); color:var(--ivory); border-color:var(--deep); }
+.btn-primary:hover { background:var(--rose); border-color:var(--rose); }
+.btn-outline { background:transparent; color:var(--deep); border-color:var(--border); }
+.btn-outline:hover { background:var(--blush); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
 
-  /* ── UPLOAD ZONE ── */
-  .upload-zone {
-    border: 1.5px dashed var(--blush);
-    border-radius: 12px;
-    padding: 2.5rem 1.5rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: rgba(232,200,184,0.06);
-  }
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--rose);
-    background: rgba(196,126,106,0.06);
-  }
-  .upload-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 1rem;
-    opacity: 0.45;
-  }
-  .upload-zone p { font-size: 0.88rem; color: var(--muted); line-height: 1.7; }
-  .upload-zone strong { color: var(--rose); font-weight: 500; }
-  #file-input { display: none; }
+/* GALLERY */
+.gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+.gallery-item { aspect-ratio:1; border-radius:10px; overflow:hidden; position:relative; background:var(--blush); cursor:pointer; border:0.5px solid var(--border); transition:transform 0.15s; }
+.gallery-item:hover { transform:scale(1.02); }
+.gallery-item img,.gallery-item video { width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.gallery-meta { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(58,42,36,0.7)); padding:1rem 0.5rem 0.4rem; }
+.gallery-meta span { font-size:0.7rem; color:rgba(249,245,239,0.9); font-weight:300; }
+.empty-state { text-align:center; padding:3rem 1rem; color:var(--muted); font-size:0.88rem; font-family:'Cormorant Garamond',serif; font-style:italic; }
 
-  /* ── NAME INPUT ── */
-  .name-field {
-    display: flex;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-  .name-field input {
-    flex: 1;
-    padding: 0.65rem 1rem;
-    border: 0.5px solid var(--border);
-    border-radius: 8px;
-    font-family: 'Jost', sans-serif;
-    font-size: 0.88rem;
-    background: var(--cream);
-    color: var(--deep);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .name-field input:focus { border-color: var(--gold); }
-  .name-field input::placeholder { color: var(--muted); }
+/* QR */
+.qr-wrapper { display:flex; flex-direction:column; align-items:center; gap:1.5rem; }
+#qr-canvas { background:white; border-radius:12px; border:0.5px solid var(--border); padding:16px; box-shadow:0 2px 20px rgba(58,42,36,0.08); }
+.qr-url { font-size:0.75rem; color:var(--muted); word-break:break-all; text-align:center; max-width:300px; background:rgba(232,200,184,0.2); padding:0.5rem 1rem; border-radius:6px; border:0.5px solid var(--border); cursor:pointer; }
+.qr-actions { display:flex; gap:0.75rem; flex-wrap:wrap; justify-content:center; }
+.qr-steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:0.75rem; margin-top:1rem; }
+.qr-step { background:rgba(232,200,184,0.15); border:0.5px solid var(--border); border-radius:10px; padding:1rem; text-align:center; }
+.qr-step-icon { font-size:1.4rem; margin-bottom:0.5rem; }
+.qr-step p { font-size:0.77rem; color:var(--muted); line-height:1.5; }
+.admin-note { margin-top:1.25rem; padding:0.9rem 1rem; background:rgba(58,42,36,0.05); border:0.5px solid var(--border); border-radius:10px; font-size:0.78rem; color:var(--muted); line-height:1.7; }
+.admin-note strong { color:var(--deep); }
+.admin-note code { background:rgba(180,150,120,0.15); padding:1px 5px; border-radius:4px; font-size:0.75rem; }
 
-  /* ── PREVIEW GRID ── */
-  .preview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 8px;
-    margin-top: 1rem;
-  }
-  .preview-item {
-    aspect-ratio: 1;
-    border-radius: 8px;
-    overflow: hidden;
-    position: relative;
-    background: var(--blush);
-    border: 0.5px solid var(--border);
-  }
-  .preview-item img, .preview-item video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .preview-item .rm {
-    position: absolute;
-    top: 4px; right: 4px;
-    width: 18px; height: 18px;
-    background: rgba(58,42,36,0.75);
-    border: none;
-    border-radius: 50%;
-    color: white;
-    font-size: 10px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .vid-badge {
-    position: absolute;
-    bottom: 4px; left: 4px;
-    background: rgba(58,42,36,0.7);
-    color: #fff;
-    font-size: 9px;
-    letter-spacing: 0.05em;
-    padding: 2px 5px;
-    border-radius: 4px;
-  }
+/* ADMIN */
+.setting-row { display:flex; align-items:center; justify-content:space-between; padding:0.9rem 0; border-bottom:0.5px solid var(--border); }
+.setting-row:last-child { border-bottom:none; }
+.setting-label { font-size:0.88rem; color:var(--deep); }
+.setting-hint { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+.toggle { width:40px; height:22px; background:var(--border); border-radius:20px; position:relative; cursor:pointer; border:none; transition:background 0.2s; flex-shrink:0; }
+.toggle.on { background:var(--sage); }
+.toggle::after { content:''; position:absolute; width:16px; height:16px; background:white; border-radius:50%; top:3px; left:3px; transition:transform 0.2s; }
+.toggle.on::after { transform:translateX(18px); }
+.pin-input { width:110px; padding:0.45rem 0.75rem; border:0.5px solid var(--border); border-radius:7px; font-family:'Jost',sans-serif; font-size:0.85rem; background:var(--cream); color:var(--deep); outline:none; text-align:center; letter-spacing:0.2em; }
 
-  /* ── BUTTON ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.6rem;
-    border-radius: 8px;
-    font-family: 'Jost', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 400;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 0.5px solid;
-  }
-  .btn-primary {
-    background: var(--deep);
-    color: var(--ivory);
-    border-color: var(--deep);
-  }
-  .btn-primary:hover { background: var(--rose); border-color: var(--rose); }
-  .btn-outline {
-    background: transparent;
-    color: var(--deep);
-    border-color: var(--border);
-  }
-  .btn-outline:hover { background: var(--blush); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* STATS */
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.5rem; }
+.stat { background:var(--card); border:0.5px solid var(--border); border-radius:10px; padding:1rem; text-align:center; }
+.stat-n { font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:300; color:var(--rose); line-height:1; }
+.stat-l { font-size:0.72rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-top:4px; }
 
-  /* ── GALLERY ── */
-  .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 10px;
-  }
-  .gallery-item {
-    aspect-ratio: 1;
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
-    background: var(--blush);
-    cursor: pointer;
-    border: 0.5px solid var(--border);
-    transition: transform 0.15s;
-  }
-  .gallery-item:hover { transform: scale(1.02); }
-  .gallery-item img, .gallery-item video {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    pointer-events: none;
-  }
-  .gallery-meta {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    background: linear-gradient(transparent, rgba(58,42,36,0.7));
-    padding: 1rem 0.5rem 0.4rem;
-  }
-  .gallery-meta span {
-    font-size: 0.7rem;
-    color: rgba(249,245,239,0.9);
-    font-weight: 300;
-  }
-  .empty-state {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: var(--muted);
-    font-size: 0.88rem;
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-  }
+/* TOAST */
+.toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(80px); background:var(--deep); color:var(--ivory); padding:0.7rem 1.4rem; border-radius:8px; font-size:0.82rem; letter-spacing:0.05em; transition:transform 0.3s ease; z-index:100; white-space:nowrap; }
+.toast.show { transform:translateX(-50%) translateY(0); }
 
-  /* ── QR SECTION ── */
-  .qr-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-  }
-  #qr-canvas {
-    background: white;
-    border-radius: 12px;
-    border: 0.5px solid var(--border);
-    padding: 16px;
-    box-shadow: 0 2px 20px rgba(58,42,36,0.08);
-  }
-  .qr-url {
-    font-size: 0.75rem;
-    color: var(--muted);
-    word-break: break-all;
-    text-align: center;
-    max-width: 300px;
-    background: rgba(232,200,184,0.2);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    border: 0.5px solid var(--border);
-    cursor: pointer;
-  }
-  .qr-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+/* LIGHTBOX */
+.lb-overlay { position:fixed; inset:0; background:rgba(30,20,15,0.9); z-index:200; display:none; align-items:center; justify-content:center; flex-direction:column; gap:1rem; }
+.lb-overlay.open { display:flex; }
+.lb-overlay img,.lb-overlay video { max-width:90vw; max-height:80vh; border-radius:8px; object-fit:contain; }
+.lb-close { position:absolute; top:1.5rem; right:1.5rem; background:rgba(255,255,255,0.15); border:none; color:white; width:36px; height:36px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.lb-info { color:rgba(249,245,239,0.7); font-size:0.8rem; letter-spacing:0.08em; }
 
-  /* ── ADMIN / SETTINGS ── */
-  .setting-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.9rem 0;
-    border-bottom: 0.5px solid var(--border);
-  }
-  .setting-row:last-child { border-bottom: none; }
-  .setting-label { font-size: 0.88rem; color: var(--deep); }
-  .setting-hint { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
-  .toggle {
-    width: 40px; height: 22px;
-    background: var(--border);
-    border-radius: 20px;
-    position: relative;
-    cursor: pointer;
-    border: none;
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
-  .toggle.on { background: var(--sage); }
-  .toggle::after {
-    content: '';
-    position: absolute;
-    width: 16px; height: 16px;
-    background: white;
-    border-radius: 50%;
-    top: 3px; left: 3px;
-    transition: transform 0.2s;
-  }
-  .toggle.on::after { transform: translateX(18px); }
-  .pin-input {
-    width: 110px;
-    padding: 0.45rem 0.75rem;
-    border: 0.5px solid var(--border);
-    border-radius: 7px;
-    font-family: 'Jost', sans-serif;
-    font-size: 0.85rem;
-    background: var(--cream);
-    color: var(--deep);
-    outline: none;
-    text-align: center;
-    letter-spacing: 0.2em;
-  }
+/* PROGRESS */
+.upload-progress { height:3px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:1rem; display:none; }
+.upload-progress-bar { height:100%; background:var(--rose); border-radius:3px; transition:width 0.3s; width:0%; }
 
-  /* ── STATS ROW ── */
-  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1.5rem; }
-  .stat {
-    background: var(--card);
-    border: 0.5px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-  }
-  .stat-n {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 2rem;
-    font-weight: 300;
-    color: var(--rose);
-    line-height: 1;
-  }
-  .stat-l { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+/* DL BAR */
+.dl-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.5rem; background:var(--card); border:0.5px solid var(--border); border-radius:12px; padding:1rem 1.25rem; }
+.dl-bar-title { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:300; color:var(--deep); }
+.dl-bar-sub { font-size:0.75rem; color:var(--muted); }
 
-  /* ── TOAST ── */
-  .toast {
-    position: fixed;
-    bottom: 1.5rem; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--deep);
-    color: var(--ivory);
-    padding: 0.7rem 1.4rem;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    letter-spacing: 0.05em;
-    transition: transform 0.3s ease;
-    z-index: 100;
-    white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+/* LIVE INDICATOR */
+.fb-status { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.72rem; color:var(--muted); letter-spacing:0.05em; }
+.fb-dot { width:7px; height:7px; border-radius:50%; background:#ccc; flex-shrink:0; transition:background 0.3s; }
+.fb-dot.live { background:var(--sage); animation:pulse 2s infinite; }
+.fb-dot.error { background:var(--rose); }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
-  /* ── LIGHTBOX ── */
-  .lb-overlay {
-    position: fixed; inset: 0;
-    background: rgba(30,20,15,0.9);
-    z-index: 200;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  .lb-overlay.open { display: flex; }
-  .lb-overlay img, .lb-overlay video {
-    max-width: 90vw; max-height: 80vh;
-    border-radius: 8px;
-    object-fit: contain;
-  }
-  .lb-close {
-    position: absolute; top: 1.5rem; right: 1.5rem;
-    background: rgba(255,255,255,0.15);
-    border: none; color: white;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    font-size: 1.1rem;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .lb-info {
-    color: rgba(249,245,239,0.7);
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-  }
+/* GUEST WAITING */
+.guest-waiting { background:var(--card); border:0.5px solid var(--border); border-radius:14px; padding:3rem 2rem; text-align:center; }
 
-  /* ── PROGRESS ── */
-  .upload-progress {
-    height: 3px;
-    background: var(--border);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-top: 1rem;
-    display: none;
-  }
-  .upload-progress-bar {
-    height: 100%;
-    background: var(--rose);
-    border-radius: 3px;
-    transition: width 0.3s;
-    width: 0%;
-  }
-
-  /* ── DOWNLOAD BAR ── */
-  .dl-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-    background: var(--card);
-    border: 0.5px solid var(--border);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-  }
-  .dl-bar-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 300; color: var(--deep); }
-  .dl-bar-sub { font-size: 0.75rem; color: var(--muted); }
-
-  /* QR instruction */
-  .qr-steps {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
-  }
-  .qr-step {
-    background: rgba(232,200,184,0.15);
-    border: 0.5px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-  }
-  .qr-step-icon { font-size: 1.4rem; margin-bottom: 0.5rem; }
-  .qr-step p { font-size: 0.77rem; color: var(--muted); line-height: 1.5; }
-
-  @media (max-width: 480px) {
-    .tabs { flex-direction: column; }
-    .stats { grid-template-columns: repeat(3,1fr); }
-    .name-field { flex-direction: column; }
-  }
+@media (max-width:480px) {
+  .tabs { flex-wrap:wrap; }
+  .tab { flex:1 1 auto; min-width:calc(50% - 1px); font-size:0.72rem; padding:0.6rem 0.5rem; }
+  .stats { grid-template-columns:repeat(3,1fr); }
+  .name-field { flex-direction:column; }
+  .dl-bar { flex-direction:column; align-items:flex-start; }
+  .qr-actions { flex-direction:column; width:100%; }
+  .qr-actions .btn { justify-content:center; }
+}
 </style>
 </head>
 <body>
@@ -521,11 +172,14 @@
     <span class="hero-ornament">✦ &nbsp; ✦ &nbsp; ✦</span>
     <h1><em>Wedding</em> Memories</h1>
     <p class="hero-sub">Capture every moment · Share with love</p>
+    <div id="admin-mode-badge" style="display:none;margin-top:0.6rem;">
+      <span class="admin-badge">🔑 Admin Mode</span>
+    </div>
     <div class="divider"><span>❧</span></div>
   </div>
 
-  <!-- COUPLE SETUP (shown on first visit) -->
-  <div id="setup-section" class="card" style="margin-bottom:1.5rem;">
+  <!-- SETUP (admin only, shown before album is configured) -->
+  <div id="setup-section" style="display:none;" class="card">
     <div class="card-title">Set up your album</div>
     <div class="card-sub">Personalize your memory collection</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
@@ -533,19 +187,34 @@
       <input id="groom-name" class="pin-input" style="width:100%;text-align:left;letter-spacing:0;" placeholder="Groom's name" />
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-      <input id="wedding-date" type="date" class="pin-input" style="width:100%;text-align:left;" />
+      <input id="wedding-date" type="date" class="pin-input" style="width:100%;text-align:left;letter-spacing:0;" />
       <input id="album-pin" class="pin-input" placeholder="Admin PIN (4-digit)" maxlength="4" type="password" />
     </div>
     <button class="btn btn-primary" onclick="saveSetup()">Create Album ✦</button>
   </div>
 
-  <!-- MAIN UI (hidden until setup) -->
+  <!-- GUEST WAITING (shown to guests before album is set up) -->
+  <div id="guest-waiting" style="display:none;" class="guest-waiting">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">💐</div>
+    <div class="card-title" style="margin-bottom:0.5rem;">Album Coming Soon</div>
+    <p style="font-size:0.88rem;color:var(--muted);line-height:1.7;">
+      The wedding memory album is being prepared.<br>Check back closer to the wedding day!
+    </p>
+  </div>
+
+  <!-- MAIN UI -->
   <div id="main-ui" style="display:none;">
 
     <!-- COUPLE HEADER -->
     <div style="text-align:center;margin-bottom:1.5rem;">
-      <p style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;color:var(--rose);" id="couple-display">— & —</p>
-      <p style="font-size:0.77rem;color:var(--muted);letter-spacing:0.1em;" id="date-display"></p>
+      <p id="couple-display" style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;color:var(--rose);">— & —</p>
+      <p id="date-display" style="font-size:0.77rem;color:var(--muted);letter-spacing:0.1em;margin-top:0.25rem;"></p>
+      <div style="margin-top:0.5rem;">
+        <span class="fb-status">
+          <span class="fb-dot" id="fb-dot"></span>
+          <span id="fb-status-text">Connecting…</span>
+        </span>
+      </div>
     </div>
 
     <!-- STATS -->
@@ -557,10 +226,10 @@
 
     <!-- TABS -->
     <div class="tabs">
-      <button class="tab active" onclick="showTab('upload')">Upload</button>
-      <button class="tab" onclick="showTab('gallery')">Gallery</button>
-      <button class="tab" onclick="showTab('share')">QR Code</button>
-      <button class="tab" onclick="showTab('admin')">Admin</button>
+      <button class="tab active" onclick="showTab('upload',this)">Upload</button>
+      <button class="tab" onclick="showTab('gallery',this)">Gallery</button>
+      <button class="tab admin-only" id="tab-btn-share" onclick="showTab('share',this)" style="display:none;">QR Code</button>
+      <button class="tab admin-only" id="tab-btn-admin" onclick="showTab('admin',this)" style="display:none;">Admin</button>
     </div>
 
     <!-- UPLOAD PANEL -->
@@ -599,14 +268,14 @@
           <div class="dl-bar-title">All Memories</div>
           <div class="dl-bar-sub" id="gallery-count">0 files collected</div>
         </div>
-        <button class="btn btn-primary" id="dl-all-btn" onclick="downloadAll()">⬇ Download All</button>
+        <button class="btn btn-primary admin-only" id="dl-all-btn" onclick="downloadAll()" style="display:none;" disabled>⬇ Download All</button>
       </div>
       <div class="gallery-grid" id="gallery-grid">
         <div class="empty-state" style="grid-column:1/-1;">No memories yet — be the first to share!</div>
       </div>
     </div>
 
-    <!-- QR PANEL -->
+    <!-- QR PANEL (admin only) -->
     <div class="panel" id="tab-share">
       <div class="card">
         <div class="card-title">Your Sharing QR Code</div>
@@ -622,8 +291,12 @@
         <div class="qr-steps">
           <div class="qr-step"><div class="qr-step-icon">📲</div><p>Guests scan QR with phone camera</p></div>
           <div class="qr-step"><div class="qr-step-icon">📸</div><p>They choose photos or videos to share</p></div>
-          <div class="qr-step"><div class="qr-step-icon">✨</div><p>Memories appear in your album instantly</p></div>
-          <div class="qr-step"><div class="qr-step-icon">⬇</div><p>Download everything in one click</p></div>
+          <div class="qr-step"><div class="qr-step-icon">✨</div><p>Memories appear in the album live</p></div>
+          <div class="qr-step"><div class="qr-step-icon">⬇</div><p>Admin downloads everything in one ZIP</p></div>
+        </div>
+        <div class="admin-note">
+          <strong>🔑 Admin tip:</strong> Bookmark this page with <code>?admin</code> in the URL to return to admin mode anytime.<br>
+          <em>Guests who scan the QR will never see admin controls.</em>
         </div>
       </div>
     </div>
@@ -632,7 +305,8 @@
     <div class="panel" id="tab-admin">
       <div id="admin-lock" class="card" style="text-align:center;">
         <div class="card-title" style="margin-bottom:1rem;">Admin Access</div>
-        <input type="password" id="admin-pin-input" class="pin-input" placeholder="Enter PIN" maxlength="4" style="margin-bottom:1rem;" />
+        <input type="password" id="admin-pin-input" class="pin-input" placeholder="Enter PIN" maxlength="4"
+          style="margin-bottom:1rem;" onkeydown="if(event.key==='Enter')unlockAdmin()" />
         <br>
         <button class="btn btn-primary" onclick="unlockAdmin()">Unlock ✦</button>
       </div>
@@ -641,25 +315,16 @@
           <div class="card-title">Album Settings</div>
           <div class="card-sub">Manage your wedding memory collection</div>
           <div class="setting-row">
-            <div>
-              <div class="setting-label">Allow uploads</div>
-              <div class="setting-hint">Guests can add photos & videos</div>
-            </div>
-            <button class="toggle on" id="tog-uploads" onclick="toggle(this)"></button>
+            <div><div class="setting-label">Allow uploads</div><div class="setting-hint">Guests can add photos & videos</div></div>
+            <button class="toggle on" onclick="this.classList.toggle('on')"></button>
           </div>
           <div class="setting-row">
-            <div>
-              <div class="setting-label">Show guest names</div>
-              <div class="setting-hint">Display who submitted each memory</div>
-            </div>
-            <button class="toggle on" id="tog-names" onclick="toggle(this)"></button>
+            <div><div class="setting-label">Show guest names</div><div class="setting-hint">Display who submitted each memory</div></div>
+            <button class="toggle on" onclick="this.classList.toggle('on')"></button>
           </div>
           <div class="setting-row">
-            <div>
-              <div class="setting-label">Video uploads</div>
-              <div class="setting-hint">Allow video files (may be slower)</div>
-            </div>
-            <button class="toggle on" id="tog-video" onclick="toggle(this)"></button>
+            <div><div class="setting-label">Video uploads</div><div class="setting-hint">Allow video files (may be slower)</div></div>
+            <button class="toggle on" onclick="this.classList.toggle('on')"></button>
           </div>
         </div>
         <div class="card">
@@ -681,7 +346,7 @@
     </div>
 
   </div><!-- /main-ui -->
-</div>
+</div><!-- /wrap -->
 
 <!-- LIGHTBOX -->
 <div class="lb-overlay" id="lightbox" onclick="closeLb(event)">
@@ -690,24 +355,83 @@
   <div class="lb-info" id="lb-info"></div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ── STATE ──
-let mediaStore = JSON.parse(localStorage.getItem('wm_media') || '[]');
-let settings = JSON.parse(localStorage.getItem('wm_settings') || '{"bride":"","groom":"","date":"","pin":"1234"}');
-let pendingFiles = [];
+// ─────────────────────────────────────────
+// FIREBASE CONFIG
+// ─────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyBNEj5hItYQxPgbVVeDMtm_5ek-Y0vfuo4",
+  authDomain:        "album-sharing-9a90b.firebaseapp.com",
+  databaseURL:       "https://album-sharing-9a90b-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "album-sharing-9a90b",
+  storageBucket:     "album-sharing-9a90b.firebasestorage.app",
+  messagingSenderId: "562708206295",
+  appId:             "1:562708206295:web:1a20bdf771552dda0ed692",
+  measurementId:     "G-31LGHF8E2N"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db      = firebase.database();
+const storage = firebase.storage();
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let mediaStore    = [];
+let settings      = { bride:'', groom:'', date:'', pin:'1234' };
+let pendingFiles  = [];
 let adminUnlocked = false;
 
-// ── INIT ──
+// ?admin in URL = admin mode; plain URL = guest mode
+const IS_ADMIN = /[?&#]admin\b/.test(window.location.search + window.location.hash);
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
 function init() {
-  if (settings.bride && settings.groom) {
-    showMainUI();
+  if (IS_ADMIN) {
+    document.getElementById('admin-mode-badge').style.display = 'block';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
-  renderGallery();
-  updateStats();
-  generateQR();
+
+  // Drag & drop
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+  document.getElementById('file-input').addEventListener('change', e => handleFiles(e.target.files));
+
+  listenSettings();
+  listenMedia();
+}
+
+// ─────────────────────────────────────────
+// SETTINGS — live listener
+// ─────────────────────────────────────────
+function listenSettings() {
+  db.ref('settings').on('value', snap => {
+    const data = snap.val();
+    if (data && data.bride && data.groom) {
+      settings = data;
+      showMainUI();
+    } else {
+      // Not configured yet
+      document.getElementById('main-ui').style.display       = 'none';
+      document.getElementById('guest-waiting').style.display = 'none';
+      document.getElementById('setup-section').style.display = 'none';
+      if (IS_ADMIN) {
+        document.getElementById('setup-section').style.display = 'block';
+      } else {
+        document.getElementById('guest-waiting').style.display = 'block';
+      }
+    }
+  }, err => {
+    setFbStatus(false);
+    toast('Firebase error — check your rules');
+    console.error(err);
+  });
 }
 
 function saveSetup() {
@@ -716,42 +440,54 @@ function saveSetup() {
   const d = document.getElementById('wedding-date').value;
   const p = document.getElementById('album-pin').value.trim();
   if (!b || !g) { toast('Please enter both names'); return; }
-  settings.bride = b; settings.groom = g;
-  settings.date = d; settings.pin = p || '1234';
-  localStorage.setItem('wm_settings', JSON.stringify(settings));
-  showMainUI();
-  toast('Album created! ✦');
+  db.ref('settings').set({ bride:b, groom:g, date:d, pin: p || '1234' })
+    .then(() => toast('Album created! ✦'))
+    .catch(e => toast('Save error: ' + e.message));
 }
 
 function showMainUI() {
-  document.getElementById('setup-section').style.display = 'none';
-  document.getElementById('main-ui').style.display = 'block';
-  document.getElementById('couple-display').textContent = settings.bride + ' & ' + settings.groom;
+  document.getElementById('setup-section').style.display  = 'none';
+  document.getElementById('guest-waiting').style.display  = 'none';
+  document.getElementById('main-ui').style.display        = 'block';
+  document.getElementById('couple-display').textContent   = settings.bride + ' & ' + settings.groom;
   if (settings.date) {
     const d = new Date(settings.date + 'T00:00:00');
-    document.getElementById('date-display').textContent = d.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'});
+    document.getElementById('date-display').textContent =
+      d.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
   }
-  document.getElementById('edit-bride').value = settings.bride;
-  document.getElementById('edit-groom').value = settings.groom;
-  generateQR();
+  if (IS_ADMIN) {
+    document.getElementById('edit-bride').value = settings.bride;
+    document.getElementById('edit-groom').value = settings.groom;
+    generateQR();
+  }
+  setFbStatus(true);
 }
 
-// ── TABS ──
-function showTab(id) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + id).classList.add('active');
-  event.target.classList.add('active');
-  if (id === 'gallery') renderGallery();
+function updateCouple() {
+  const b = document.getElementById('edit-bride').value.trim();
+  const g = document.getElementById('edit-groom').value.trim();
+  if (!b || !g) { toast('Names cannot be empty'); return; }
+  db.ref('settings').update({ bride:b, groom:g })
+    .then(() => toast('Updated! ✦'))
+    .catch(e => toast('Error: ' + e.message));
 }
 
-// ── FILE HANDLING ──
-const dropZone = document.getElementById('drop-zone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
-document.getElementById('file-input').addEventListener('change', e => handleFiles(e.target.files));
+// ─────────────────────────────────────────
+// MEDIA — real-time listener
+// ─────────────────────────────────────────
+function listenMedia() {
+  db.ref('memories').on('value', snap => {
+    mediaStore = [];
+    snap.forEach(child => mediaStore.push({ id: child.key, ...child.val() }));
+    mediaStore.sort((a,b) => new Date(b.ts) - new Date(a.ts));
+    updateStats();
+    renderGallery();
+  });
+}
 
+// ─────────────────────────────────────────
+// FILE HANDLING
+// ─────────────────────────────────────────
 function handleFiles(files) {
   Array.from(files).forEach(file => {
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
@@ -761,17 +497,14 @@ function handleFiles(files) {
     const rm = document.createElement('button');
     rm.className = 'rm'; rm.textContent = '✕';
     const idx = pendingFiles.length - 1;
-    rm.onclick = (e) => { e.stopPropagation(); pendingFiles.splice(idx, 1); item.remove(); updateUploadBtn(); };
+    rm.onclick = e => { e.stopPropagation(); pendingFiles.splice(idx,1); item.remove(); updateUploadBtn(); };
     if (file.type.startsWith('image/')) {
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
+      const img = document.createElement('img'); img.src = URL.createObjectURL(file);
       item.appendChild(img);
     } else {
-      const vid = document.createElement('video');
-      vid.src = URL.createObjectURL(file);
+      const vid = document.createElement('video'); vid.src = URL.createObjectURL(file);
       item.appendChild(vid);
-      const badge = document.createElement('div');
-      badge.className = 'vid-badge'; badge.textContent = 'VIDEO';
+      const badge = document.createElement('div'); badge.className = 'vid-badge'; badge.textContent = 'VIDEO';
       item.appendChild(badge);
     }
     item.appendChild(rm);
@@ -791,138 +524,214 @@ function clearPreview() {
   updateUploadBtn();
 }
 
-// ── UPLOAD (stores as base64 in localStorage) ──
+// ─────────────────────────────────────────
+// UPLOAD → Storage + Realtime DB
+// ─────────────────────────────────────────
 async function uploadFiles() {
   if (!pendingFiles.length) return;
   const guestName = document.getElementById('guest-name').value.trim() || 'Anonymous Guest';
   const prog = document.getElementById('upload-prog');
-  const bar = document.getElementById('upload-bar');
+  const bar  = document.getElementById('upload-bar');
+  const btn  = document.getElementById('upload-btn');
+
   prog.style.display = 'block'; bar.style.width = '0%';
+  btn.disabled = true; btn.textContent = 'Uploading…';
 
-  for (let i = 0; i < pendingFiles.length; i++) {
-    const file = pendingFiles[i];
-    bar.style.width = Math.round(((i + 0.5) / pendingFiles.length) * 100) + '%';
-    const b64 = await toBase64(file);
-    mediaStore.push({
-      id: Date.now() + i,
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      data: b64,
-      guest: guestName,
-      ts: new Date().toISOString()
-    });
+  const total = pendingFiles.length;
+  let done = 0;
+
+  try {
+    for (const file of pendingFiles) {
+      const uid  = Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      const path = `wedding-memories/${uid}_${file.name}`;
+      const ref  = storage.ref(path);
+
+      await ref.put(file);
+      const url = await ref.getDownloadURL();
+
+      await db.ref('memories').push({
+        name:  file.name,
+        type:  file.type,
+        size:  file.size,
+        url,
+        path,
+        guest: guestName,
+        ts:    new Date().toISOString()
+      });
+
+      done++;
+      bar.style.width = Math.round((done / total) * 100) + '%';
+    }
+
+    setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 600);
+    toast('✦ ' + total + ' file' + (total > 1 ? 's' : '') + ' shared!');
+    clearPreview();
+  } catch(e) {
+    toast('Upload failed: ' + e.message);
+    console.error(e);
+    prog.style.display = 'none';
   }
-  bar.style.width = '100%';
-  setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 600);
 
-  try { localStorage.setItem('wm_media', JSON.stringify(mediaStore)); }
-  catch(e) { toast('Storage full — try downloading & clearing the album'); return; }
-
-  updateStats();
-  clearPreview();
-  toast('✦ ' + pendingFiles.length + ' file' + (pendingFiles.length > 1 ? 's' : '') + ' added!');
-  pendingFiles = [];
+  btn.disabled = false; btn.textContent = 'Upload to Album ✦';
 }
 
-function toBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
-
-// ── GALLERY ──
+// ─────────────────────────────────────────
+// GALLERY
+// ─────────────────────────────────────────
 function renderGallery() {
-  const grid = document.getElementById('gallery-grid');
+  const grid  = document.getElementById('gallery-grid');
   const count = document.getElementById('gallery-count');
+  const dlBtn = document.getElementById('dl-all-btn');
   grid.innerHTML = '';
   count.textContent = mediaStore.length + ' file' + (mediaStore.length !== 1 ? 's' : '') + ' collected';
+  if (dlBtn) dlBtn.disabled = mediaStore.length === 0;
+
   if (!mediaStore.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;font-family:\'Cormorant Garamond\',serif;font-style:italic;">No memories yet — be the first to share!</div>';
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No memories yet — be the first to share!</div>';
     return;
   }
+
   mediaStore.forEach((m, i) => {
     const item = document.createElement('div');
     item.className = 'gallery-item';
     item.onclick = () => openLb(i);
+
     if (m.type.startsWith('image/')) {
-      const img = document.createElement('img');
-      img.src = m.data; img.loading = 'lazy';
+      const img = document.createElement('img'); img.src = m.url; img.loading = 'lazy';
       item.appendChild(img);
     } else {
-      const vid = document.createElement('video');
-      vid.src = m.data;
+      const vid = document.createElement('video'); vid.src = m.url; vid.preload = 'metadata';
       item.appendChild(vid);
+      const badge = document.createElement('div'); badge.className = 'vid-badge'; badge.textContent = 'VIDEO';
+      item.appendChild(badge);
     }
+
     const meta = document.createElement('div');
     meta.className = 'gallery-meta';
-    meta.innerHTML = '<span>' + m.guest + '</span>';
+    meta.innerHTML = '<span>' + escHtml(m.guest) + '</span>';
     item.appendChild(meta);
     grid.appendChild(item);
   });
-  document.getElementById('dl-all-btn').disabled = mediaStore.length === 0;
 }
 
-// ── LIGHTBOX ──
+// ─────────────────────────────────────────
+// LIGHTBOX
+// ─────────────────────────────────────────
 function openLb(i) {
-  const m = mediaStore[i];
+  const m  = mediaStore[i];
   const lb = document.getElementById('lightbox');
-  const c = document.getElementById('lb-content');
+  const c  = document.getElementById('lb-content');
   c.innerHTML = '';
   if (m.type.startsWith('image/')) {
-    const img = document.createElement('img');
-    img.src = m.data;
-    c.appendChild(img);
+    const img = document.createElement('img'); img.src = m.url; c.appendChild(img);
   } else {
     const vid = document.createElement('video');
-    vid.src = m.data; vid.controls = true; vid.autoplay = true;
-    c.appendChild(vid);
+    vid.src = m.url; vid.controls = true; vid.autoplay = true; c.appendChild(vid);
   }
-  document.getElementById('lb-info').textContent = m.guest + ' · ' + new Date(m.ts).toLocaleDateString();
+  document.getElementById('lb-info').textContent =
+    m.guest + ' · ' + new Date(m.ts).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   lb.classList.add('open');
 }
+
 function closeLb(e) {
   if (!e || e.target === document.getElementById('lightbox') || e.target.className === 'lb-close') {
-    document.getElementById('lightbox').classList.remove('open');
+    const vid = document.querySelector('#lb-content video');
+    if (vid) vid.pause();
     document.getElementById('lb-content').innerHTML = '';
+    document.getElementById('lightbox').classList.remove('open');
   }
 }
 
-// ── DOWNLOAD ALL ──
+// ─────────────────────────────────────────
+// DOWNLOAD ALL (admin)
+// ─────────────────────────────────────────
 async function downloadAll() {
   if (!mediaStore.length) { toast('No files to download yet'); return; }
-  toast('Preparing ZIP…');
-  const zip = new JSZip();
+  toast('Preparing ZIP… this may take a moment');
+  const zip    = new JSZip();
   const folder = zip.folder(settings.bride + '_' + settings.groom + '_Memories');
-  mediaStore.forEach((m, i) => {
-    const ext = m.name.split('.').pop() || (m.type.includes('video') ? 'mp4' : 'jpg');
-    const base64Data = m.data.split(',')[1];
-    folder.file((i + 1) + '_' + m.guest.replace(/\s+/g,'_') + '.' + ext, base64Data, { base64: true });
-  });
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = settings.bride + '_' + settings.groom + '_Wedding_Memories.zip';
-  a.click();
-  toast('✦ Download started!');
+  try {
+    for (let i = 0; i < mediaStore.length; i++) {
+      const m   = mediaStore[i];
+      const ext = m.name.split('.').pop() || (m.type.includes('video') ? 'mp4' : 'jpg');
+      const res = await fetch(m.url);
+      const buf = await res.arrayBuffer();
+      folder.file((i+1) + '_' + m.guest.replace(/\s+/g,'_') + '.' + ext, buf);
+    }
+    const blob = await zip.generateAsync({ type:'blob' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = settings.bride + '_' + settings.groom + '_Wedding_Memories.zip';
+    a.click();
+    toast('✦ Download started!');
+  } catch(e) {
+    toast('Download error: ' + e.message);
+    console.error(e);
+  }
 }
 
-// ── QR CODE ──
+// ─────────────────────────────────────────
+// CLEAR ALBUM (admin)
+// ─────────────────────────────────────────
+async function clearAlbum() {
+  if (!confirm('Delete ALL memories? This cannot be undone.')) return;
+  try {
+    for (const m of mediaStore) {
+      if (m.path) await storage.ref(m.path).delete().catch(() => {});
+    }
+    await db.ref('memories').remove();
+    toast('Album cleared');
+  } catch(e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────
+// STATS
+// ─────────────────────────────────────────
+function updateStats() {
+  document.getElementById('st-photos').textContent = mediaStore.filter(m => m.type.startsWith('image/')).length;
+  document.getElementById('st-videos').textContent = mediaStore.filter(m => m.type.startsWith('video/')).length;
+  document.getElementById('st-guests').textContent = [...new Set(mediaStore.map(m => m.guest))].length;
+}
+
+// ─────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ─────────────────────────────────────────
+// ADMIN UNLOCK
+// ─────────────────────────────────────────
+function unlockAdmin() {
+  const p = document.getElementById('admin-pin-input').value;
+  if (p === settings.pin) {
+    document.getElementById('admin-lock').style.display  = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    toast('Admin unlocked ✦');
+  } else {
+    toast('Incorrect PIN');
+    document.getElementById('admin-pin-input').value = '';
+  }
+}
+
+// ─────────────────────────────────────────
+// QR CODE — always the plain guest URL
+// ─────────────────────────────────────────
 function generateQR() {
   const container = document.getElementById('qr-canvas');
   container.innerHTML = '';
-  const url = window.location.href.split('#')[0];
+  const url = window.location.href.split('?')[0].split('#')[0];
   document.getElementById('qr-url-display').textContent = url;
   if (typeof QRCode !== 'undefined') {
     new QRCode(container, {
-      text: url,
-      width: 200,
-      height: 200,
-      colorDark: '#3a2a24',
-      colorLight: '#ffffff',
+      text: url, width: 200, height: 200,
+      colorDark: '#3a2a24', colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.H
     });
   }
@@ -932,7 +741,7 @@ function downloadQR() {
   const canvas = document.querySelector('#qr-canvas canvas');
   if (!canvas) { toast('QR not ready'); return; }
   const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
+  a.href     = canvas.toDataURL('image/png');
   a.download = 'wedding_memories_qr.png';
   a.click();
   toast('QR downloaded!');
@@ -940,55 +749,28 @@ function downloadQR() {
 
 function copyUrl() {
   const url = document.getElementById('qr-url-display').textContent;
-  navigator.clipboard.writeText(url).then(() => toast('Link copied!')).catch(() => toast('Copy manually: ' + url));
+  navigator.clipboard.writeText(url)
+    .then(() => toast('Link copied!'))
+    .catch(() => toast('Copy manually: ' + url));
 }
 
-// ── STATS ──
-function updateStats() {
-  const photos = mediaStore.filter(m => m.type.startsWith('image/')).length;
-  const videos = mediaStore.filter(m => m.type.startsWith('video/')).length;
-  const guests = [...new Set(mediaStore.map(m => m.guest))].length;
-  document.getElementById('st-photos').textContent = photos;
-  document.getElementById('st-videos').textContent = videos;
-  document.getElementById('st-guests').textContent = guests;
+// ─────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────
+function setFbStatus(ok) {
+  const dot  = document.getElementById('fb-dot');
+  const text = document.getElementById('fb-status-text');
+  if (!dot) return;
+  dot.className    = 'fb-dot' + (ok ? ' live' : ' error');
+  text.textContent = ok ? 'Live' : 'Connection error';
 }
 
-// ── ADMIN ──
-function unlockAdmin() {
-  const p = document.getElementById('admin-pin-input').value;
-  if (p === settings.pin) {
-    adminUnlocked = true;
-    document.getElementById('admin-lock').style.display = 'none';
-    document.getElementById('admin-panel').style.display = 'block';
-    toast('Admin unlocked ✦');
-  } else {
-    toast('Incorrect PIN');
-    document.getElementById('admin-pin-input').value = '';
-  }
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function toggle(el) { el.classList.toggle('on'); }
-
-function updateCouple() {
-  const b = document.getElementById('edit-bride').value.trim();
-  const g = document.getElementById('edit-groom').value.trim();
-  if (!b || !g) { toast('Names cannot be empty'); return; }
-  settings.bride = b; settings.groom = g;
-  localStorage.setItem('wm_settings', JSON.stringify(settings));
-  document.getElementById('couple-display').textContent = b + ' & ' + g;
-  toast('Updated!');
-}
-
-function clearAlbum() {
-  if (!confirm('Clear all memories from the album? This cannot be undone.')) return;
-  mediaStore = [];
-  localStorage.removeItem('wm_media');
-  updateStats();
-  renderGallery();
-  toast('Album cleared');
-}
-
-// ── TOAST ──
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;

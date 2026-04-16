@@ -423,9 +423,7 @@ function init() {
 
 function saveScriptUrl() {
   const url = document.getElementById('script-url-input').value.trim();
-  if (!url.startsWith('https://script.google.com-')) {
-    toast('Please enter a valid Apps Script URL'); return;
-  }
+ if (!url.startsWith('https://script.google.com/')) {
   localStorage.setItem('gas_script_url', url);
   SCRIPT_URL = url;
   document.getElementById('script-url-prompt').style.display = 'none';

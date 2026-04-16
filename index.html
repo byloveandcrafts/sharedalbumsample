@@ -423,7 +423,7 @@ function init() {
 
 function saveScriptUrl() {
   const url = document.getElementById('script-url-input').value.trim();
-  if (!url.startsWith('https://script.google.com/macros/s/AKfycbwll8BTpslO4RWSGmfs9YRgZZn273rqZVWQSYPheDsbreq33AjBcvYSrbEaBqYEjf_o/exec')) {
+  if (!url.startsWith('https://script.google.com-')) {
     toast('Please enter a valid Apps Script URL'); return;
   }
   localStorage.setItem('gas_script_url', url);

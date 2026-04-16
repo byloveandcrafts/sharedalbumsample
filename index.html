@@ -380,7 +380,9 @@ body::before {
 // CONFIG
 // ─────────────────────────────────────────
 // Your Google Apps Script Web App URL — set via the prompt or admin panel
-let SCRIPT_URL = localStorage.getItem('gas_script_url') || '';
+// Hardcoded script URL — guests on any device will always see the upload UI
+const HARDCODED_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwm2eLF_eBlV3ST_Sw5GHp2PQ_QhmU-XkXcZ9c5bB_qDn5IaqdyAgP8IcNZ9Ll_3JxnHg/exec';
+let SCRIPT_URL = HARDCODED_SCRIPT_URL || localStorage.getItem('gas_script_url') || '';
 
 // ?admin in URL = admin mode
 const IS_ADMIN = /[?&#]admin\b/.test(window.location.search + window.location.hash);
@@ -433,6 +435,11 @@ function saveScriptUrl() {
   SCRIPT_URL = url;
   document.getElementById('script-url-prompt').style.display = 'none';
   loadAlbum();
+}
+
+// On init, always sync localStorage with the hardcoded URL so admin changes persist
+if (!localStorage.getItem('gas_script_url') && HARDCODED_SCRIPT_URL) {
+  localStorage.setItem('gas_script_url', HARDCODED_SCRIPT_URL);
 }
 
 function updateScriptUrl() {

@@ -584,7 +584,13 @@ async function uploadFiles() {
   let done = 0;
 
   try {
-    for (const file of pendingFiles) {
+    // Notice we changed "file" to "originalFile" here
+    for (const originalFile of pendingFiles) {
+      
+      // THIS IS THE MAGIC LINE YOU WERE MISSING:
+      // Shrink the file before doing anything else
+      const file = await compressImage(originalFile);
+
       const uid  = Date.now() + '_' + Math.random().toString(36).slice(2,7);
       const path = `wedding-memories/${uid}_${file.name}`;
       const ref  = storage.ref(path);

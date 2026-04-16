@@ -541,22 +541,7 @@ async function uploadFiles() {
   let done = 0;
 
   try {
-    async function uploadFiles() {
-  if (!pendingFiles.length) return;
-  const guestName = document.getElementById('guest-name').value.trim() || 'Anonymous Guest';
-  const prog = document.getElementById('upload-prog');
-  const bar  = document.getElementById('upload-bar');
-  const btn  = document.getElementById('upload-btn');
-
-  prog.style.display = 'block'; bar.style.width = '0%';
-  btn.disabled = true; btn.textContent = 'Uploading…';
-
-  const total = pendingFiles.length;
-  let done = 0;
-
-  try {
-    // Map each file to an upload Promise so they run concurrently
-    const uploadPromises = pendingFiles.map(async (file) => {
+    for (const file of pendingFiles) {
       const uid  = Date.now() + '_' + Math.random().toString(36).slice(2,7);
       const path = `wedding-memories/${uid}_${file.name}`;
       const ref  = storage.ref(path);
@@ -574,13 +559,9 @@ async function uploadFiles() {
         ts:    new Date().toISOString()
       });
 
-      // Update progress bar as each file finishes
       done++;
       bar.style.width = Math.round((done / total) * 100) + '%';
-    });
-
-    // Wait for ALL concurrent uploads to finish
-    await Promise.all(uploadPromises);
+    }
 
     setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 600);
     toast('✦ ' + total + ' file' + (total > 1 ? 's' : '') + ' shared!');
@@ -593,6 +574,7 @@ async function uploadFiles() {
 
   btn.disabled = false; btn.textContent = 'Upload to Album ✦';
 }
+
 // ─────────────────────────────────────────
 // GALLERY
 // ─────────────────────────────────────────
